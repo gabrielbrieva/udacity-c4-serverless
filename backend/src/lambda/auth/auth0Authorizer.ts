@@ -68,7 +68,7 @@ async function verifyToken(authHeader: string): Promise<JwtPayload> {
     return verify(token, key.publicKey, { algorithms: ['RS256'] }) as JwtPayload
 
   } catch (err) {
-    console.log(err);
+    logger.error(err);
   }
 
   return null;
@@ -94,8 +94,7 @@ interface ISignedKey {
 
 async function getSigningKey(jwtKid: string): Promise<ISignedKey> {
 
-  if (!jwtKid)
-    throw new Error('jwtKid arg is required')
+  if (!jwtKid) throw new Error('jwtKid arg is required')
 
   const response = await Axios.get(jwksUrl, {
     responseType: 'json'

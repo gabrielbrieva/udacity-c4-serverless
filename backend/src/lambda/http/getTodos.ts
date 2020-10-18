@@ -5,13 +5,15 @@ import { getUserId } from '../utils';
 import * as middy from 'middy';
 import { cors } from 'middy/middlewares';
 import { TodoItem } from '../../models/TodoItem';
+import { createLogger } from '../../utils/logger';
 
+const logger = createLogger('getTodos');
 const todosDataAccess = new TodoDataAccess();
 
 export const handler = middy(async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   // TODO: Get all TODO items for a current user
 
-  console.log('Processing event: ', event)
+  logger.info('Processing event: ', event)
 
   const userId = getUserId(event);
   const items: TodoItem[] = await todosDataAccess.getAll(userId);

@@ -1,6 +1,9 @@
 import { DocumentClient } from "aws-sdk/clients/dynamodb";
 import { TodoItem } from "../models/TodoItem";
+import { createLogger } from "../utils/logger";
 import { createDocumentClient } from "./dynamoDB";
+
+const logger = createLogger('TodoDataAccess');
 
 export class TodoDataAccess {
 
@@ -13,7 +16,7 @@ export class TodoDataAccess {
     }
 
     async getAll(userId: string): Promise<TodoItem[]> {
-        console.log(`Getting all todos for ${userId}`);
+        logger.info(`Getting all todos for ${userId}`);
 
         const result = await this.docClient.query({
             TableName: this.todosTableName,
@@ -25,6 +28,5 @@ export class TodoDataAccess {
 
         return result.Items as TodoItem[];
     }
-
 
 }
