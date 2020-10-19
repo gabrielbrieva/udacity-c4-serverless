@@ -73,11 +73,6 @@ export class TodoDataAccess {
                 todoId,
                 userId
             }
-        }, (err, data) => {
-            if (err)
-                logger.error("Unable to delete item", JSON.stringify(err))
-            else
-                logger.info("DeleteItem succeeded", JSON.stringify(data))
         }).promise();
     }
 }

@@ -25,8 +25,7 @@ export const handler = middy(async (event: APIGatewayProxyEvent): Promise<APIGat
   }
 });
 
-handler.use(
-  cors({
-    credentials: true
-  })
-);
+handler.use(cors({
+  origin: '*',
+  credentials: true
+}));

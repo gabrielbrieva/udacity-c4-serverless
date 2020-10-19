@@ -11,7 +11,7 @@ const logger = createLogger('getTodos');
 
 export const handler = middy(async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
 
-  logger.info('Processing event: ', event)
+  logger.info('Processing event: ', event);
 
   const userId = getUserId(event);
   const items: TodoItem[] = await TodoService.get(userId);
@@ -22,8 +22,7 @@ export const handler = middy(async (event: APIGatewayProxyEvent): Promise<APIGat
   }
 });
 
-handler.use(
-  cors({
-      credentials: true
-  })
-);
+handler.use(cors({
+  origin: '*',
+  credentials: true
+}));
