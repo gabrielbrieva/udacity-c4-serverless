@@ -15,18 +15,69 @@ export class TodoDataAccess {
         this.todosTableName = todosTableName;
     }
 
-    async getAll(userId: string): Promise<TodoItem[]> {
-        logger.info(`Getting all todos for ${userId}`);
+    async getAll(userId: string, todoId?: string): Promise<TodoItem[]> {
+        logger.info(`Getting all todos by user id '${userId}'`);
 
-        const result = await this.docClient.query({
+        let queryInput: DocumentClient.QueryInput  = {
             TableName: this.todosTableName,
             KeyConditionExpression: 'userId = :userId',
             ExpressionAttributeValues: {
                 ':userId': userId
             }
-        }).promise();
+        }
+
+        if (todoId) {
+            logger.info(`Using todo id '${todoId}'`);
+            queryInput.KeyConditionExpression += ' AND todoId = :todoId';
+            queryInput.ExpressionAttributeValues[':todoId'] = todoId;
+        }
+
+        const result = await this.docClient.query(queryInput).promise();
 
         return result.Items as TodoItem[];
     }
 
+    async create(todo: TodoItem): Promise<TodoItem> {
+        await this.docClient.put({
+            TableName: this.todosTableName,
+            Item: todo,
+        }).promise();
+
+        return todo;
+    }
+
+    async update(updatedTodo: any): Promise<TodoItem> {
+        await this.docClient.update({
+            TableName: this.todosTableName,
+            Key: {
+                todoId: updatedTodo.todoId,
+                userId: updatedTodo.userId
+            },
+            ExpressionAttributeNames: { "#N": "name" },
+            UpdateExpression: "set #N = :name, dueDate = :dueDate, done = :done",
+            ExpressionAttributeValues: {
+                ":name": updatedTodo.name,
+                ":dueDate": updatedTodo.dueDate,
+                ":done": updatedTodo.done,
+            },
+            ReturnValues: "UPDATED_NEW"
+        }).promise();
+
+        return updatedTodo;
+    }
+
+    async delete(userId: string, todoId: string) {
+        await this.docClient.delete({
+            TableName: this.todosTableName,
+            Key: {
+                todoId,
+                userId
+            }
+        }, (err, data) => {
+            if (err)
+                logger.error("Unable to delete item", JSON.stringify(err))
+            else
+                logger.info("DeleteItem succeeded", JSON.stringify(data))
+        }).promise();
+    }
 }
