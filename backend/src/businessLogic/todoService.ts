@@ -3,14 +3,28 @@ import { TodoItem } from "../models/TodoItem";
 import { CreateTodoRequest } from "../requests/CreateTodoRequest";
 import * as uuid from 'uuid';
 import { UpdateTodoRequest } from "../requests/UpdateTodoRequest";
-import { UpdateTodoAttachmentRequest } from "../requests/UpdateTodoAttachmentRequest";
+import * as AWS from "aws-sdk";
+import { createLogger } from "../utils/logger";
+
+const s3BucketName = process.env.S3_ATTACHEMENTS_BUCKET;
+const signedUrlExpiration = process.env.SIGNED_URL_EXPIRATION_TIME;
+
+const AWSXRay = require('aws-xray-sdk');
+const XAWS = AWSXRay.captureAWS(AWS);
+
+const s3 = new XAWS.S3({
+    signatureVersion: 'v4'
+});
+
+const logger = createLogger('TodoService');
 
 export interface ITodoService {
     get(userId: string, todoId?: string): Promise<TodoItem[]>;
     create(createTodoReq: CreateTodoRequest, userId: string): Promise<TodoItem>;
     update(updateTodoReq: UpdateTodoRequest, userId: string, todoId: string): Promise<TodoItem>;
     delete(userId: string, todoId: string): Promise<void>;
-    updateAttachment(updateTodoReq: UpdateTodoAttachmentRequest, userId: string, todoId: string): Promise<TodoItem>;
+    updateAttachment(attachmentUrl: string, userId: string, todoId: string): Promise<TodoItem>;
+    getSignedUpdateAttachmentUrl(todoId: string): string;
 }
 
 class TodoServiceImpl implements ITodoService {
@@ -47,14 +61,38 @@ class TodoServiceImpl implements ITodoService {
     }
 
     async delete(userId: string, todoId: string): Promise<void> {
-        return await this.todosDataAccess.delete(userId, todoId);
+
+        // Remove S3 object attached to Todo Item if exist
+        const todoItems: TodoItem[] = await this.get(userId, todoId);
+
+        logger.info(`Todo item to delete: ${JSON.stringify(todoItems)}`);
+
+        if (todoItems && todoItems.length > 0 && todoItems[0] && todoItems[0].attachmentUrl) {
+
+            logger.info(`Deleting Todo item '${todoId}' from S3...`);
+
+            await s3.deleteObject({
+                Bucket: s3BucketName,
+                Key: todoId
+            }).promise();
+        }
+
+        await this.todosDataAccess.delete(userId, todoId);
     }
 
-    async updateAttachment(updateTodoReq: UpdateTodoAttachmentRequest, userId: string, todoId: string): Promise<TodoItem> {
-        return await this.todosDataAccess.update({
-            userId,
-            todoId,
-            attachmentUrl: updateTodoReq.attachmentUrl,
+    async updateAttachment(attachmentUrl: string, userId: string, todoId: string): Promise<TodoItem> {
+        return await this.todosDataAccess.updateAttachmentUrl({
+            userId: userId,
+            todoId: todoId,
+            attachmentUrl: attachmentUrl,
+        });
+    }
+
+    getSignedUpdateAttachmentUrl(todoId: string): string {
+        return s3.getSignedUrl('putObject', {
+            Bucket: s3BucketName,
+            Key: todoId,
+            Expires: parseInt(signedUrlExpiration)
         });
     }
 

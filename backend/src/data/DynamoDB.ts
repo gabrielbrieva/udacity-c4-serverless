@@ -5,7 +5,7 @@ import { createLogger } from '../utils/logger';
 
 const AWSXRay = require('aws-xray-sdk');
 const XAWS = AWSXRay.captureAWS(AWS);
-const logger = createLogger('createDocumentClient')
+const logger = createLogger('createDocumentClient');
 
 export function createDocumentClient(): DocumentClient {
     if (process.env.IS_OFFLINE) {

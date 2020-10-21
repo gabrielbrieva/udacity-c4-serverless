@@ -14,8 +14,18 @@ provider:
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-east-1'}
 
+  iamRoleStatements:
+    - Effect: 'Allow'
+      Action:
+        - 'xray:PutTelemetryRecords'
+        - 'xray:PutTraceSegments'
+      Resource:
+        - '*'
+
   environment:
     TODOS_TABLE: Todos-${self:provider.stage}
+    S3_ATTACHEMENTS_BUCKET: todos-files-${self:provider.stage}
+    SIGNED_URL_EXPIRATION_TIME: 300
 
 custom:
   documentation:
@@ -31,9 +41,6 @@ custom:
       - name: UpdateTodoReq
         contentType: application/json
         schema: ${file(models/update-todo-request.json)}
-      # - name: UpdateTodoAttachmentReq
-      #   contentType: application/json
-      #   schema: ${file(models/update-todo-attachment-request.json)}
 
 functions:
 
@@ -52,6 +59,10 @@ functions:
         Action:
           - dynamodb:Query
         Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
+      - Effect: Allow
+        Action:
+          - s3:GetObject
+        Resource: arn:aws:s3:::${self:provider.environment.S3_ATTACHEMENTS_BUCKET}/*
 
   CreateTodo:
     handler: src/lambda/http/createTodo.handler
@@ -94,7 +105,6 @@ functions:
           - dynamodb:UpdateItem
         Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
 
-  # TODO: Configure this function
   DeleteTodo:
     handler: src/lambda/http/deleteTodo.handler
     events:
@@ -112,14 +122,31 @@ functions:
           - dynamodb:DeleteItem
           - dynamodb:Query
         Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
+      - Effect: Allow
+        Action:
+          - s3:GetObject
+          - s3:DeleteObject
+        Resource: arn:aws:s3:::${self:provider.environment.S3_ATTACHEMENTS_BUCKET}/*
 
-  # TODO: Configure this function
-  # GenerateUploadUrl:
-  #   handler: src/lambda/http/generateUploadUrl.handler
-  #   events:
-  #     - http:
-  #         method: post
-  #         path: todos/{todoId}/attachment
+  GenerateUploadUrl:
+    handler: src/lambda/http/generateUploadUrl.handler
+    events:
+      - http:
+          method: post
+          path: todos/{todoId}/attachment
+          cors: true
+          authorizer: Auth
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - s3:PutObject
+          - s3:GetObject
+        Resource: arn:aws:s3:::${self:provider.environment.S3_ATTACHEMENTS_BUCKET}/*
+      - Effect: Allow
+        Action:
+          - dynamodb:UpdateItem
+          - dynamodb:Query
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
 
 resources:
   Resources:
@@ -159,3 +186,35 @@ resources:
           Ref: ApiGatewayRestApi
         ValidateRequestBody: true
         ValidateRequestParameters: false
+
+    AttachmentsBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:provider.environment.S3_ATTACHEMENTS_BUCKET}
+        CorsConfiguration:
+          CorsRules:
+            - AllowedOrigins:
+                - '*'
+              AllowedHeaders:
+                - '*'
+              AllowedMethods:
+                - GET
+                - PUT
+                - POST
+                - DELETE
+                - HEAD
+              MaxAge: 3000
+
+    BucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        PolicyDocument:
+          Id: TodoS3Policy
+          Version: "2012-10-17"
+          Statement:
+            - Sid: PublicReadForGetBucketObjects
+              Effect: Allow
+              Principal: '*'
+              Action: 's3:GetObject'
+              Resource: 'arn:aws:s3:::${self:provider.environment.S3_ATTACHEMENTS_BUCKET}/*'
+        Bucket: !Ref AttachmentsBucket

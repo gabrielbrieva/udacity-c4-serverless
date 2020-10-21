@@ -9,6 +9,9 @@ import { cors } from 'middy/middlewares';
 const logger = createLogger('deleteTodo');
 
 export const handler = middy(async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+
+  logger.info('Processing event: ', event);
+
   const userId = getUserId(event);
   const todoId = event.pathParameters.todoId
   
