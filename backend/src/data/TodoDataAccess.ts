@@ -38,15 +38,23 @@ export class TodoDataAccess {
     }
 
     async create(todo: TodoItem): Promise<TodoItem> {
+
+        logger.info(`Creating new Todo Item: ${JSON.stringify(todo)}`);
+
         await this.docClient.put({
             TableName: this.todosTableName,
             Item: todo,
         }).promise();
 
+        logger.info(`Todo Item created: ${JSON.stringify(todo)}`);
+
         return todo;
     }
 
     async update(updatedTodo: any): Promise<TodoItem> {
+
+        logger.info(`Updating Todo Item: ${JSON.stringify(updatedTodo)}`);
+
         await this.docClient.update({
             TableName: this.todosTableName,
             Key: {
@@ -63,10 +71,15 @@ export class TodoDataAccess {
             ReturnValues: "UPDATED_NEW"
         }).promise();
 
+        logger.info(`Todo Item updated: ${JSON.stringify(updatedTodo)}`);
+
         return updatedTodo;
     }
 
     async updateAttachmentUrl(updatedTodo: any): Promise<TodoItem> {
+
+        logger.info(`Updating Attachment for Todo Item: ${JSON.stringify(updatedTodo)}`);
+
         await this.docClient.update({
             TableName: this.todosTableName,
             Key: {
@@ -81,10 +94,15 @@ export class TodoDataAccess {
             ReturnValues: "UPDATED_NEW"
         }).promise();
 
+        logger.info(`Attachment for Todo Item updated: ${JSON.stringify(updatedTodo)}`);
+
         return updatedTodo;
     }
 
     async delete(userId: string, todoId: string) {
+
+        logger.info(`Deleting Todo Item by ID '${todoId}' and User ID '${userId}'`);
+
         await this.docClient.delete({
             TableName: this.todosTableName,
             Key: {
@@ -92,5 +110,7 @@ export class TodoDataAccess {
                 userId
             }
         }).promise();
+
+        logger.info(`Todo Item by ID '${todoId}' and User ID '${userId}' deleted`);
     }
 }

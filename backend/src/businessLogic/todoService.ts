@@ -36,11 +36,15 @@ class TodoServiceImpl implements ITodoService {
     }
 
     async get(userId: string, todoId?: string): Promise<TodoItem[]> {
+        logger.info(`Getting Todo items by User ID '${userId}' and Todo ID '${todoId}'`);
         return await this.todosDataAccess.getAll(userId, todoId);
     }
 
     async create(createTodoReq: CreateTodoRequest, userId: string): Promise<TodoItem> {
-        return await this.todosDataAccess.create(<TodoItem>{
+
+        logger.info(`Creating new Todo Item...`);
+
+        const newItem = await this.todosDataAccess.create(<TodoItem>{
             userId: userId,
             todoId: uuid.v4(),
             createdAt: new Date().toISOString(),
@@ -48,21 +52,31 @@ class TodoServiceImpl implements ITodoService {
             dueDate: createTodoReq.dueDate,
             done: false
         });
+
+        logger.info(`New Todo Item created: ${JSON.stringify(newItem)}`);
+
+        return newItem;
     }
 
     async update(updateTodoReq: UpdateTodoRequest, userId: string, todoId: string): Promise<TodoItem> {
-        return await this.todosDataAccess.update(<TodoItem>{
+        logger.info(`Updating Todo items ID '${todoId}'`);
+
+        const todoItem = await this.todosDataAccess.update(<TodoItem>{
             userId: userId,
             todoId: todoId,
             name: updateTodoReq.name,
             dueDate: updateTodoReq.dueDate,
             done: updateTodoReq.done
         });
+
+        logger.info(`Todo items ID '${todoId}' updated: ${JSON.stringify(todoItem)}`);
+
+        return todoItem;
     }
 
     async delete(userId: string, todoId: string): Promise<void> {
 
-        // Remove S3 object attached to Todo Item if exist
+        logger.info(`Remove S3 object attached to Todo Item ID '${todoId}' if exist`);
         const todoItems: TodoItem[] = await this.get(userId, todoId);
 
         logger.info(`Todo item to delete: ${JSON.stringify(todoItems)}`);
@@ -77,23 +91,39 @@ class TodoServiceImpl implements ITodoService {
             }).promise();
         }
 
+        logger.info(`Removing Todo item '${todoId}' from DB`);
+
         await this.todosDataAccess.delete(userId, todoId);
     }
 
     async updateAttachment(attachmentUrl: string, userId: string, todoId: string): Promise<TodoItem> {
-        return await this.todosDataAccess.updateAttachmentUrl({
+
+        logger.info(`Updating Todo items ID '${todoId}' attachment`);
+
+        const todoItem = await this.todosDataAccess.updateAttachmentUrl({
             userId: userId,
             todoId: todoId,
             attachmentUrl: attachmentUrl,
         });
+
+        logger.info(`Todo items ID '${todoId}' attachment updated: ${JSON.stringify(todoItem)}`);
+
+        return todoItem;
     }
 
     getSignedUpdateAttachmentUrl(todoId: string): string {
-        return s3.getSignedUrl('putObject', {
+
+        logger.info(`Getting Signed URL for Attachment of Todo Items ID '${todoId}'`);
+
+        const signedUrl = s3.getSignedUrl('putObject', {
             Bucket: s3BucketName,
             Key: todoId,
             Expires: parseInt(signedUrlExpiration)
         });
+
+        logger.info(`Signed URL for Attachment of Todo Item ID '${todoId}': ${signedUrl}`);
+
+        return signedUrl;
     }
 
 }
